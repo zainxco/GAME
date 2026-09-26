@@ -12,8 +12,9 @@
 
 ## النماذج والتراخيص
 
-- الشخصيات والأسلحة: [Quaternius Toon Shooter Game Kit](https://quaternius.com/packs/toonshootergamekit.html)، ترخيص CC0.
-- اليد الظاهرة في منظور اللاعب: [Gloved Hand by J-Toastie](https://poly.pizza/m/MTB4egc4Vh)، ترخيص CC BY 3.0.
+- الزومبي: [Zombie by Quaternius](https://poly.pizza/m/VlXjG0N8Eg)، ترخيص CC0.
+- نماذج اليدين والأسلحة المتحركة: [FPS Rig](https://poly.pizza/m/uxko5LkGia) و[FPS Rig AKM](https://poly.pizza/m/U6l6wjxFhC) من J-Toastie، ترخيص [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). عُدّل الحجم والألوان وتأطير الكاميرا وسرعة الأنيميشن للعبة.
 - Three.js 0.160.0 مضمنة محليًا، وترخيصها في `THREE-LICENSE.txt`.
 
 الصوت مركّب محليًا باستخدام Web Audio API، ولا تحتاج اللعبة إلى خدمات خارجية أثناء اللعب.
+
