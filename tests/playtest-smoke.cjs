@@ -1,0 +1,36 @@
+const assert = require('node:assert/strict');
+const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+(async () => {
+  const browser = await chromium.launch({headless:true,args:['--use-gl=angle','--use-angle=swiftshader']});
+  const page = await browser.newPage({viewport:{width:1280,height:760}});
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  page.on('console', m => {if(m.type()==='error')errors.push(m.text())});
+  await page.route('**/fps.js*', async route => {
+    const response = await route.fetch();
+    let source = (await response.text()).replaceAll('requestAnimationFrame(loop);','').replace('renderFrame();','if(!window.stepping)renderFrame();');
+    source += `let tick=1;window.qa={step(n){window.stepping=true;for(let i=0;i<n;i++)loop(tick+=40);window.stepping=false;renderFrame()},fire:shoot,reload,kill(){enemies.forEach(e=>damageEnemy(e,99999))},info(){return {ammo,round,playing,remaining:enemies.filter(e=>!e.dead).length,spawns:environment.spawnPoints.length,clear:environment.clear(player.x,player.z),far:camera.far,ssr:reflectionsPass.enabled}}};`;
+    await route.fulfill({response,body:source});
+  });
+  await page.goto((process.env.BASE_URL || 'http://127.0.0.1:8126')+'/playtest.html');
+  await page.waitForFunction(()=>window.qa,{timeout:120000});
+  await page.selectOption('#draw-distance','400');
+  await page.click('#play');
+  await page.evaluate(()=>qa.step(3));
+  let state=await page.evaluate(()=>qa.info());
+  assert.equal(state.remaining,8);assert.equal(state.spawns,8);assert.equal(state.clear,true);assert.equal(state.far,400);assert.equal(state.ssr,true);
+  await page.evaluate(()=>{qa.fire();qa.step(8)});
+  assert.equal((await page.evaluate(()=>qa.info())).ammo,27);
+  await page.evaluate(()=>{qa.reload();qa.step(90)});
+  assert.equal((await page.evaluate(()=>qa.info())).ammo,28);
+  await page.evaluate(()=>qa.kill());
+  assert.equal(await page.locator('#overlay-title').textContent(),'تم تأمين الساحة');
+  await page.uncheck('#reflections');
+  await page.selectOption('#draw-distance','120');
+  await page.click('#play');
+  await page.evaluate(()=>qa.step(3));
+  state=await page.evaluate(()=>qa.info());assert.equal(state.remaining,8);assert.equal(state.far,120);assert.equal(state.ssr,false);
+  assert.deepEqual(errors,[]);
+  console.log('PASS: eight safe spawns, shooting, reload, victory, replay, SSR toggle and 120/400 m draw distance.');
+  await browser.close();
+})().catch(error=>{console.error(error);process.exit(1)});

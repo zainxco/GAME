@@ -35,6 +35,13 @@
 
 
 ## Single-level realistic playtest
-Open `playtest.html` for the standalone courtyard preview. It uses photo-based PBR surfaces, scanned cover props and HDR environment lighting from Poly Haven (CC0); see `assets/realistic/CREDITS.md`. One assault rifle, eight zombies, a victory screen and replay are included. This preview does not read or modify campaign progress. The original 100-round game remains at `index.html`. Gun and hand models are currently the existing stylized rig; this preview focuses on environment quality.
+Open `playtest.html` for the standalone courtyard preview. It uses photo-based PBR surfaces, scanned cover props and HDR environment lighting from Poly Haven (CC0); see `assets/realistic/CREDITS.md`. One assault rifle, eight zombies, a victory screen and replay are included. This preview does not read or modify campaign progress. The original 100-round game remains at `index.html`. The playtest now uses Cransh’s detailed FPS AK-74m model and authored arms/animations (CC BY 4.0), with camera alignment and optimized textures. See assets/ak74/README.md and license.txt. It uses a photographic late-afternoon sky and screen-space ambient occlusion. The campaign retains its original viewmodels.
 
 Validation: browser checked all eight clear spawn points, shooting/reloading, incoming damage, victory and replay; no JavaScript or missing-asset errors. Desktop and landscape phone layouts were captured. Actual Android hardware performance has not been measured.
+
+The latest courtyard rebuild uses Poly Haven modular factory facade meshes (arched windows, recessed loading doors and architectural trim), scanned air conditioners and shrubs, and AgX tone mapping. The AK-74 is framed lower-right to show its receiver and supporting hand.
+
+
+Graphics settings in the playtest start/pause screen: selective screen-space ray-marched reflections (SSR) on wet patches, and 120 / 240 / 400 m draw distance. Reflections only include visible screen data; this is not hardware ray tracing or a path tracer. SSR defaults off on touch devices. Distant industrial buildings provide a visible skyline beyond the combat arena.
+
+The preview defaults to 400 m draw distance and includes a visible sun disk/halo aligned to its directional light. Reduce distance or disable SSR in the start/pause screen for lower-powered devices.

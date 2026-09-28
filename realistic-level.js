@@ -10,13 +10,13 @@ export async function loadRealisticLevel(loader,renderer){
   maps.forEach(t=>{t.wrapS=t.wrapT=T.RepeatWrapping;t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy())});maps[0].colorSpace=T.SRGBColorSpace;
   surfaces[name]=new T.MeshStandardMaterial({map:maps[0],normalMap:maps[1],roughnessMap:maps[2],roughness:.88,normalScale:new T.Vector2(.65,.65)});
  }));
- const [hdr,...props]=await Promise.all([new RGBELoader().loadAsync(root+'courtyard.hdr'),...['barrel_03','concrete_road_barrier','wooden_crate_01'].map(n=>loader.loadAsync(root+n+'/'+n+'.gltf'))]);
+ const [hdr,...props]=await Promise.all([new RGBELoader().loadAsync(root+'sunset-sky.hdr'),...['barrel_03','concrete_road_barrier','wooden_crate_01','modular_factory_facade','exterior_aircon_unit','wild_rooibos_bush'].map(n=>loader.loadAsync(root+n+'/'+n+'.gltf'))]);
  hdr.mapping=T.EquirectangularReflectionMapping;
  const generator=new T.PMREMGenerator(renderer),lighting=generator.fromEquirectangular(hdr).texture;generator.dispose();
  library={surfaces,hdr,lighting,props};return library;
 }
 export function createRealisticLevel(){
- const group=new T.Group(),obstacles=[],resources=new Set(),bounds={minX:-12,maxX:12,minZ:-23,maxZ:21};
+ const group=new T.Group(),reflections=[],obstacles=[],resources=new Set(),bounds={minX:-12,maxX:12,minZ:-23,maxZ:21};
  const keep=r=>(resources.add(r),r),mats=new Map();let seed=9182;
  const random=()=>((seed=seed*16807%2147483647)-1)/2147483646;
  const mat=(color,metalness=0,roughness=.8)=>{const key=[color,metalness,roughness].join();if(!mats.has(key))mats.set(key,keep(new T.MeshStandardMaterial({color,metalness,roughness})));return mats.get(key)};
@@ -36,44 +36,66 @@ export function createRealisticLevel(){
   const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=256;const ctx=canvas.getContext('2d');ctx.fillStyle=warning?'#b3a06a':'#263a3a';ctx.fillRect(0,0,1024,256);ctx.strokeStyle=warning?'#34382f':'#94a39a';ctx.lineWidth=9;ctx.strokeRect(16,16,992,224);ctx.fillStyle=warning?'#252a25':'#dfdfcc';ctx.font='bold 92px Arial';ctx.textAlign='center';ctx.fillText(text,512,160);for(let i=0;i<1100;i++){ctx.fillStyle='rgba(20,23,20,.12)';ctx.fillRect(random()*1024,random()*256,random()*15,2)}
   const tex=keep(new T.CanvasTexture(canvas));tex.colorSpace=T.SRGBColorSpace;const material=keep(new T.MeshStandardMaterial({map:tex,roughness:.95}));const mesh=new T.Mesh(keep(new T.PlaneGeometry(w,h)),material);mesh.position.set(x,y,z);mesh.rotation.y=rotation;group.add(mesh);
  }
- // Enclosed, human-scale service courtyard with distinct flanking lanes.
+ // Detailed authored factory kit replaces the flat procedural facade.
  box(0,-.18,-1,44,.36,66,asphalt);
- box(-13,5,-3,3,10,54,brick,true);box(14,3.5,-5,5,7,54,concrete,true);box(0,5,-26,29,10,3,brick,true);
- box(0,2,24,28,4,2,concrete,true);
+ const facade=library.props[3].scene;
+ function kit(name,x,y,z,angle=0,width=3){const source=facade.getObjectByName(name);if(!source)throw new Error('Missing facade '+name);const part=source.clone(true),pivot=new T.Group();part.position.set(width/2,0,0);part.rotation.set(0,0,0);pivot.add(part);pivot.position.set(x,y,z);pivot.rotation.y=angle;part.traverse(o=>{if(o.isMesh){o.castShadow=o.receiveShadow=true}});group.add(pivot);return pivot}
+ const roof=mat(0x454a45,.35,.82);
+ // Deep building volumes support the kit's recesses and prevent sky leaks.
+ box(-15,4.5,-1,6,9,48,concrete,true);box(15,3,-1,6,6,48,concrete,true);box(0,4.5,-28.5,30,9,6,concrete,true);box(0,2,24,28,4,2,concrete,true);
  for(const side of [-1,1]){
-  const x=side*11.3;
-  box(x,.1,-1,1.25,.2,47,concrete);
-  box(side*11.95,side<0?9.9:7.05,-2,.7,.3,51,trim);
-  box(side*11.8,.55,-1,.15,1.1,49,concrete);
-  for(let z=18;z>=-20;z-=6){
-   // Recessed glass, jambs, sills and mullions, oriented into the arena.
-   const y=side<0?5.1:4.2;
-   box(x+side*.3,y,z,.12,2.25,2.9,metal);
-   box(x+side*.21,y,z,.035,1.98,2.66,glass);
-   for(const dy of [-1.1,0,1.1])box(x+side*.13,y+dy,z,.12,.055,2.8,trim);
-   for(const dz of [-1.4,0,1.4])box(x+side*.12,y,z+dz,.12,2.2,.06,trim);
-   box(x,y-1.18,z,.5,.13,3.1,concrete);
-   if(side<0){box(x+.2,8.1,z,.1,1.6,2.8,metal);box(x+.26,8.1,z,.06,1.4,2.6,glass)}
+  const x=side*11.78,angle=side<0?Math.PI/2:-Math.PI/2,stories=side<0?3:2;
+  box(side*11.25,.075,-1,1.2,.15,47,concrete);
+  for(let i=0;i<16;i++){
+   const z=21.5-i*3;
+   for(let floor=0;floor<stories;floor++){
+    const variant=['01','02','03','04'][(i+floor)%4];
+    const style=side<0?'tall_large':'centered_medium';
+    kit('wall_window_'+style+'_'+variant,x,floor*3,z,angle);
+    kit('window_'+style+'_'+variant,x,floor*3,z,angle);
+    kit('cornice03_standard_standard_01',x,floor*3,z,angle);
+   }
+   kit('base_standard_standard_01',x,0,z,angle);
+   kit('cornice01_standard_standard_01',x,stories*3,z,angle);
+   if(i%3===0)kit('wall_pier_standard_01',x+(side<0?.04:-.04),0,z-1.45,angle,0);
   }
+  box(side*14.8,stories*3+.08,-1,6.4,.18,48,roof);
+  for(const z of [-19,-4,15]){pipe(side*11.42,stories*1.5,z,.07,stories*3,rust);for(let y=.5;y<stories*3;y+=1.5)pipe(side*11.42,y,z,.1,.055,metal)}
  }
- // Loading bay: slatted steel shutter, warning edging, overhead canopy.
- box(0,2.15,-24.43,7,4.3,.14,metal);
- for(let y=.12;y<4.3;y+=.17)box(0,y,-24.31,6.85,.045,.05,trim);
- for(const x of [-3.65,3.65])box(x,2.3,-24.15,.22,4.6,.4,concrete);
- box(0,4.65,-23.8,8,.18,1.8,metal);sign('SECTOR 07  /  LOADING',0,5.6,-24.35,6,.95);
- for(const x of [-8.6,8.6]){
-  box(x,2,-24.4,2.2,4,.12,metal);box(x-.65,1.85,-24.24,.06,.4,.08,rust);
-  sign('RESTRICTED',x,3,-24.2,1.65,.43,0,true);
+ for(let i=0;i<10;i++){
+  const x=-13.5+i*3;
+  for(let floor=0;floor<3;floor++){
+   if(floor===0&&Math.abs(x)<4.6)continue;
+   const v=i%2?'01':'03';kit('wall_window_tall_large_'+v,x,floor*3,-24.42);kit('window_tall_large_'+v,x,floor*3,-24.42);
+  }
+  kit('cornice01_standard_standard_01',x,9,-24.42);
  }
- // Mechanical details: drainpipes, clamps, electrical conduits and HVAC.
- for(const z of [-19,-4,15]){
-  pipe(-11.12,4.8,z,.09,9.6,rust);for(let y=1;y<9;y+=2)pipe(-11.12,y,z,.12,.09,metal);
-  box(10.6,2.85,z,1.3,1.1,1.5,metal);for(let i=0;i<8;i++)box(9.93,2.4+i*.12,z,.04,.035,1.28,trim);
-  pipe(10.7,1.2,z,.035,2.2,rust);
+ kit('wall_door_garage_double_01',0,0,-24.42,0,9);kit('door_garage_double_01',0,0,-24.42,0,9);
+ box(0,3.45,-23.6,10,.18,2,roof);for(const x of [-4.5,4.5])pipe(x,1.7,-22.9,.055,3.4,metal);
+ sign('WEST YARD  /  07',0,4.25,-24.2,4.6,.7);sign('QUARANTINE',-11.32,2.6,8,2.5,.65,Math.PI/2,true);
+ // Roof silhouettes, ducts and an external access stair break the rectangular skyline.
+ for(const [x,z,y]of [[-15,-15,9],[15,-8,6],[-15,10,9]]){box(x,y+.45,z,2,.9,1.4,metal);pipe(x,y+1.6,z,.18,2.8,rust);pipe(x+.65,y+1,z,.25,1.7,metal)}
+ for(let i=0;i<13;i++)box(10.55,.2+i*.21,-11-i*.31,1.2,.09,.32,metal);
+ for(const x of [9.9,11.2]){const rail=pipe(x,2.45,-13,.035,4.7,metal,'z');rail.rotation.x=-.55;for(let i=0;i<4;i++)pipe(x,1.1+i*.64,-11.3-i*.93,.025,1,metal)}
+ obstacles.push({x:10.55,z:-13,w:.9,d:2.7,h:3});
+ // Real rusted air-conditioning units and naturally irregular shrubs.
+ function objectPart(index,name,x,y,z,angle,scale=1){const o=library.props[index].scene.getObjectByName(name).clone(true);o.position.set(0,0,0);const g=new T.Group();g.add(o);g.position.set(x,y,z);g.rotation.y=angle;g.scale.setScalar(scale);g.traverse(m=>{if(m.isMesh){m.castShadow=m.receiveShadow=true}});group.add(g);return g}
+ for(const z of [-17,-2,14])objectPart(4,'exterior_aircon_unit_rusted',11.25,3.25,z,-Math.PI/2,1.2);
+ for(let i=0;i<14;i++){const side=i%2?1:-1;objectPart(5,'wild_rooibos_bush_'+['a','b','c','d','e'][i%5],side*(10.5+random()*.45),0,-20+random()*39,random()*6,.75+random()*.65)}
+ // Cables run between buildings, with visible sag.
+ for(const z of [-15,7]){const path=new T.CatmullRomCurve3([new T.Vector3(-11.5,7.8,z),new T.Vector3(0,6.5,z+.6),new T.Vector3(11.5,6,z)]);group.add(new T.Mesh(keep(new T.TubeGeometry(path,24,.014,5,false)),mat(0x252b2a)))}
+ // Shallow irregular wet patches pick up the sky without behaving like mirrors.
+ const puddle=keep(new T.MeshStandardMaterial({color:0x444c49,metalness:0,roughness:.32,transparent:true,opacity:.24,depthWrite:false}));
+ for(const [x,z,sx,sz]of [[-5,12,1.3,.6],[5,1,1.7,.65],[-3,-11,1.4,.5]]){const shape=new T.Shape();for(let i=0;i<18;i++){const a=i/18*Math.PI*2,r=.8+random()*.2;const px=Math.cos(a)*r,pz=Math.sin(a)*r;i?shape.lineTo(px,pz):shape.moveTo(px,pz)}shape.closePath();const m=new T.Mesh(keep(new T.ShapeGeometry(shape)),puddle);m.rotation.x=-Math.PI/2;m.scale.set(sx,sz,1);m.position.set(x,.013,z);group.add(m);reflections.push(m)}
+ // A distant factory district adds depth beyond the playable courtyard.
+ const district=new T.Group();group.add(district);
+ for(let i=0;i<14;i++){
+  const x=(i%2?1:-1)*(23+Math.floor(i/2)*9),z=-50-Math.floor(i/2)*21,h=12+(i%4)*4;
+  const mass=box(x,h/2,z,12,h,16,brick);district.attach(mass);
+  const cap=box(x,h+.18,z,12.5,.36,16.5,roof);district.attach(cap);
+  for(let j=0;j<4;j++)for(let floor=1;floor<h/3;floor++){const center=x-4.5+j*3;const wall=kit('wall_window_tall_large_01',center,floor*3,z+8.04);const window=kit('window_tall_large_01',center,floor*3,z+8.04);district.attach(wall);district.attach(window)}
+  if(i%3===0){const chimney=pipe(x+2,h+6,z,1,12,rust);district.attach(chimney)}
  }
- pipe(-10.95,6.55,-1,.14,42,rust,'z');pipe(-10.85,6.2,-1,.06,42,metal,'z');
- for(let z=-21;z<22;z+=4)box(-11,6.4,z,.3,.65,.06,metal);
- sign('QUARANTINE  /  KEEP CLEAR',-11.02,2.4,7,3.7,.7,Math.PI/2,true);
  // Scanned props, with the same collision bounds as the visible models.
  function prop(index,x,z,height,angle=0,blocking=true){
   const model=library.props[index].scene.clone(true);const b=new T.Box3().setFromObject(model),size=b.getSize(new T.Vector3()),center=b.getCenter(new T.Vector3()),scale=height/size.y;
@@ -105,6 +127,6 @@ export function createRealisticLevel(){
  const index=(x,z)=>Math.max(0,Math.min(nz-1,Math.round(z+23)))*nx+Math.max(0,Math.min(nx-1,Math.round(x+12)));let last=-1;
  function updateNavigation(target){let start=index(target.x,target.z);if(!walk[start]){let best=Infinity;for(let k=0;k<walk.length;k++)if(walk[k]){const d=Math.abs(k%nx-start%nx)+Math.abs(Math.floor(k/nx)-Math.floor(start/nx));if(d<best){best=d;start=k}}}if(start===last)return;last=start;distance.fill(-1);let head=0,tail=0;queue[tail++]=start;distance[start]=0;while(head<tail){const k=queue[head++],x=k%nx;for(const n of [x>0?k-1:-1,x<nx-1?k+1:-1,k-nx,k+nx])if(n>=0&&n<walk.length&&walk[n]&&distance[n]<0){distance[n]=distance[k]+1;queue[tail++]=n}}}
  function direction(pos,target){let k=index(pos.x,pos.z),best=k,d=distance[k]<0?32767:distance[k],x=k%nx;for(const n of [x>0?k-1:-1,x<nx-1?k+1:-1,k-nx,k+nx])if(n>=0&&n<walk.length&&distance[n]>=0&&distance[n]<d){best=n;d=distance[n]}return best===k?target:{x:-12+best%nx,z:-23+Math.floor(best/nx)}}
- updateNavigation(spawn);
- return{group,obstacles,bounds,spawn,spawnPoints:spawnPoints.filter(p=>clear(p.x,p.z)&&distance[index(p.x,p.z)]>=0),name:'ساحة العزل · المرحلة التجريبية',sky:0xa6b0ae,kind:'prototype',clear,updateNavigation,direction,background:library.hdr,lighting:library.lighting,dispose(){resources.forEach(r=>r.dispose())}};
+ updateNavigation(spawn);group.traverse(o=>{if(o.isMesh)for(const m of(Array.isArray(o.material)?o.material:[o.material]))if(m.isMeshStandardMaterial)m.envMapIntensity=.4});
+ return{group,reflections,obstacles,bounds,spawn,spawnPoints:spawnPoints.filter(p=>clear(p.x,p.z)&&distance[index(p.x,p.z)]>=0),name:'ساحة العزل · المرحلة التجريبية',sky:0xa6b0ae,kind:'prototype',clear,updateNavigation,direction,background:library.hdr,lighting:library.lighting,dispose(){resources.forEach(r=>r.dispose())}};
 }
