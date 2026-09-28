@@ -6,5 +6,20 @@ export function buildEnemy(library,index,boss){const typeIndex=boss?3:index%enem
 const mixer=new T.AnimationMixer(model),actions={},find=(pattern)=>template.animations.find(c=>pattern.test(c.name));const move=find(/walk|animation zombie|^move$|run/i),idle=find(/idle/i)||move||template.animations[0];const clips={Idle:idle,Walk:move||idle,Run_Arms:move||idle,Punch:find(/punch|attack|mixamo/i),Death:find(/death/i),HitReact:find(/hitreact/i)};for(const [name,clip]of Object.entries(clips)){if(!clip)continue;const action=mixer.clipAction(clip.clone());if(['Death','Punch','HitReact'].includes(name)){action.setLoop(T.LoopOnce,1);action.clampWhenFinished=true}actions[name]=action}
 let sword;if(typeIndex===3){sword=new T.Group();const blade=library.sword.scene.clone(true),bb=new T.Box3().setFromObject(blade),size=bb.getSize(new T.Vector3()),ss=1.1/Math.max(size.x,size.y,size.z);blade.scale.multiplyScalar(ss);const center=bb.getCenter(new T.Vector3());blade.position.addScaledVector(center,-ss);sword.add(blade);sword.position.set(-.48,1.02,.13);sword.rotation.z=-.85;pose.add(sword)}
 return{group,pose,model,mixer,actions,bones,sword,typeIndex,kind:type.name,height:type.height*(boss?1.2:1),speed:type.speed,boss,phase:index*.7};}
-export function updateEnemyVisual(e,dt){e.phase+=dt*4;if(e.dead){if(!e.actions.Death){const t=Math.min(1,(3-e.deathTime)/.7);e.pose.rotation.x=-t*Math.PI*.48;e.pose.position.y=-t*.35}return}e.pose.rotation.x=e.attackTimer>0?-Math.sin(e.attackTimer/.75*Math.PI)*.15:e.stagger>0?.13:0;e.pose.position.y=e.attackTimer>0?0:Math.sin(e.phase)*.016;if(e.sword)e.sword.rotation.z=-.85+Math.sin(Math.max(0,e.attackTimer)/.75*Math.PI)*1.7;
-if(e.typeIndex===4){for(const {bone,base}of e.bones){let angle=0;const name=bone.name;if(/^(thigh|upperarm)_[lr]$/.test(name)){const sign=name.endsWith('_l')?1:-1;angle=Math.sin(e.phase)*(/thigh/.test(name)?.25:-.18)*sign;if(/upperarm/.test(name)&&e.attackTimer>0)angle-=Math.sin(e.attackTimer/.75*Math.PI)*.8}bone.quaternion.copy(base).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(1,0,0),angle))}}}
+const axisX=new T.Vector3(1,0,0),rotation=new T.Quaternion();
+export function updateEnemyVisual(e,dt){
+ e.phase+=dt*(e.moving?e.speed*3.2:1.4);
+ if(e.dead){const t=Math.min(1,(3-e.deathTime)/.85),ease=t*t*(3-2*t);if(!e.actions.Death){e.pose.rotation.x=-ease*Math.PI*.47;e.pose.rotation.z=Math.sin(t*Math.PI)*.12;e.pose.position.y=-ease*.22}if(e.deathTime<.8)e.pose.position.y-=dt*.65;return}
+ const progress=e.attackTimer>0?1-e.attackTimer/e.attackDuration:0,contact=e.windup/e.attackDuration;
+ const strike=progress<contact?-.4*Math.sin(progress/contact*Math.PI/2):Math.sin(Math.min(1,(progress-contact)/(1-contact))*Math.PI)*.95;
+ e.pose.rotation.x=e.stagger>0?.16:e.attackTimer>0?strike*.22:e.moving?.035:0;
+ e.pose.rotation.z=e.moving?Math.sin(e.phase)*.018:0;
+ e.pose.position.y=e.moving?Math.abs(Math.sin(e.phase))*(e.typeIndex===2?.045:.018):Math.sin(e.phase)*.007;
+ if(e.sword){e.sword.rotation.z=-.85+strike*2.1;e.sword.rotation.x=strike*.6}
+ for(const {bone,base}of e.bones){const n=bone.name.toLowerCase();let angle=0;
+ if(e.typeIndex===4){bone.quaternion.copy(base);const side=/_l$/.test(n)?1:-1;if(/^(thigh|upperarm)_[lr]$/.test(n)&&e.moving)angle=Math.sin(e.phase)*(/thigh/.test(n)?.38:-.24)*side;if(/^calf_[lr]$/.test(n)&&e.moving)angle=Math.max(0,Math.sin(e.phase)*side)*.42;if(/spine_01/.test(n))angle=.08;}
+ if(e.attackTimer>0&&!e.actions.Punch){if(/upperarm|arm_l|arm_r|leftarm|rightarm/.test(n)&&!/fore|lower/.test(n))angle+=strike*1.05;if(/spine/.test(n))angle+=strike*.025;}
+ if(e.stagger>0&&/spine/.test(n))angle+=.045;
+ if(angle)bone.quaternion.multiply(rotation.setFromAxisAngle(axisX,angle));
+ }
+}
