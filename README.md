@@ -32,3 +32,9 @@
 - الأعداء يفتحون تدريجيًا في الجولات 1 و3 و5 و8 و12، مع زيادة العدد حتى 18 وإضافة زعيم كل عشر جولات.
 - صحة وسرعة وقوة وتوقيت ضربات مختلفة لكل نوع، وتتبّع لمسار اللاعب حول العوائق، والتفاف ناعم وردود إصابة وسقوط.
 - حركات النماذج الأصلية ممزوجة بحركة إجرائية؛ لا توجد حزمة motion capture جديدة.
+
+
+## Single-level realistic playtest
+Open `playtest.html` for the standalone courtyard preview. It uses photo-based PBR surfaces, scanned cover props and HDR environment lighting from Poly Haven (CC0); see `assets/realistic/CREDITS.md`. One assault rifle, eight zombies, a victory screen and replay are included. This preview does not read or modify campaign progress. The original 100-round game remains at `index.html`. Gun and hand models are currently the existing stylized rig; this preview focuses on environment quality.
+
+Validation: browser checked all eight clear spawn points, shooting/reloading, incoming damage, victory and replay; no JavaScript or missing-asset errors. Desktop and landscape phone layouts were captured. Actual Android hardware performance has not been measured.
